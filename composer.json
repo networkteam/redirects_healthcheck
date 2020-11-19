@@ -1,0 +1,23 @@
+{
+  "name": "networkteam/redirects-healthcheck",
+  "type": "typo3-cms-extension",
+  "description": "Check health of redirects",
+  "keywords": [
+    "TYPO3",
+    "Redirects",
+    "Healthcheck"
+  ],
+  "homepage": "https://github.com/networkteam/redirects_healthcheck",
+  "license": [
+    "GPL-2.0-or-later"
+  ],
+  "require": {
+    "typo3/cms-core": "^9.5 || ^10.4",
+    "typo3/cms-redirects": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Networkteam\\RedirectsHealthcheck\\": "Classes/"
+    }
+  }
+}

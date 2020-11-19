@@ -1,0 +1,14 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: false
+
+  Networkteam\RedirectsHealthcheck\:
+    resource: '../Classes/*'
+
+  Networkteam\RedirectsHealthcheck\Command\CheckCommand:
+    tags:
+      - name: 'console.command'
+        command: 'redirects:checkhealth'
+        schedulable: true

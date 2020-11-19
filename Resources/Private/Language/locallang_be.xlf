@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.0">
+    <file source-language="en" datatype="plaintext" original="messages" date="2020-11-17T11:11:11Z"
+          product-name="redirects_healthcheck">
+        <header/>
+        <body>
+            <trans-unit id="sys_redirect.inactive_reason">
+                <source>Inactive reason</source>
+            </trans-unit>
+            <trans-unit id="sys_redirect.last_checked">
+                <source>Last Healthcheck</source>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>
