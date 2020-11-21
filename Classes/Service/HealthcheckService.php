@@ -3,6 +3,7 @@
 namespace Networkteam\RedirectsHealthcheck\Service;
 
 use Psr\Http\Message\UriInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Http\RequestFactory;
@@ -42,6 +43,11 @@ class HealthcheckService
      */
     protected $frontendUserAuthentication;
 
+    /**
+     * @var OutputInterface
+     */
+    protected $output;
+
     public function __construct(
         SiteFinder $siteFinder,
         RequestFactory $requestFactory,
@@ -77,6 +83,10 @@ class HealthcheckService
         $this->defaultSite = $this->siteFinder->getSiteByIdentifier($siteIdentifier);
     }
 
+    public function setOutput(OutputInterface $output) {
+        $this->output = $output;
+    }
+
     protected function checkUrl($redirect): ?string
     {
         $site = $this->findSiteBySourceHost($redirect['source_host']);
@@ -91,6 +101,11 @@ class HealthcheckService
             $site->getBase(),
             $site
         );
+
+        if ($this->output) {
+            $sourceUrl = $site->getBase()->getScheme() . '://' . $site->getBase()->getHost() . $redirect['source_path'];
+            $this->output->write(sprintf('<info>Checking #%s: %s =></info> ', $redirect['uid'], $sourceUrl));
+        }
 
         if ($uri instanceof UriInterface) {
             $isFileOrFolder = empty($uri->getHost());
@@ -117,6 +132,20 @@ class HealthcheckService
             } catch (\Throwable $e) {
                 $inactiveReason = 'Unknown: ' . $e->getMessage();
             }
+        }
+
+        if ($this->output) {
+            if (!$uri) {
+                $this->output->writeln('<error>Could not resolve target</error>');
+            } else {
+                $this->output->write(sprintf('<info>%s</info> ', $url));
+                if ($inactiveReason) {
+                    $this->output->writeln(sprintf('<error>%s</error>', $inactiveReason));
+                } else {
+                    $this->output->writeln('<info>OK</info>');
+                }
+            }
+
         }
 
         return $inactiveReason ?? null;

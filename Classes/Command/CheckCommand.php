@@ -24,6 +24,9 @@ class CheckCommand extends Command
         if ($input->getArgument('siteIdentifier')) {
             $healthcheckService->setDefaultSite($input->getArgument('siteIdentifier'));
         }
+        if ($output->isVerbose()) {
+            $healthcheckService->setOutput($output);
+        }
         $healthcheckService->runHealthcheck();
 
         return 0;
