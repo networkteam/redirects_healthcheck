@@ -2,13 +2,16 @@
 
 namespace Networkteam\RedirectsHealthcheck\Service;
 
+use Psr\Http\Message\UriInterface;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Http\RequestFactory;
-use TYPO3\CMS\Core\LinkHandling\LinkService;
+use TYPO3\CMS\Core\Http\ServerRequest;
 use TYPO3\CMS\Core\Site\Entity\Site;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
+use TYPO3\CMS\Redirects\Service\RedirectService;
 
 class HealthcheckService
 {
@@ -17,25 +20,38 @@ class HealthcheckService
     /**
      * @var Site
      */
-    protected $site;
+    protected $defaultSite;
 
     /**
-     * @var LinkService
+     * @var SiteFinder
      */
-    protected $linkService;
+    protected $siteFinder;
 
     /**
      * @var RequestFactory
      */
     protected $requestFactory;
 
-    public function __construct(SiteFinder $siteFinder, LinkService $linkService, RequestFactory $requestFactory)
-    {
-        $sites = $siteFinder->getAllSites();
-        $this->site = current($sites);
+    /**
+     * @var RedirectService
+     */
+    protected $redirectService;
 
-        $this->linkService = $linkService;
+    /**
+     * @var FrontendUserAuthentication
+     */
+    protected $frontendUserAuthentication;
+
+    public function __construct(
+        SiteFinder $siteFinder,
+        RequestFactory $requestFactory,
+        RedirectService $redirectService,
+        FrontendUserAuthentication $frontendUserAuthentication
+    ) {
+        $this->siteFinder = $siteFinder;
         $this->requestFactory = $requestFactory;
+        $this->redirectService = $redirectService;
+        $this->frontendUserAuthentication = $frontendUserAuthentication;
     }
 
     public function runHealthcheck(): void
@@ -56,44 +72,37 @@ class HealthcheckService
         }
     }
 
+    public function setDefaultSite(string $siteIdentifier): void
+    {
+        $this->defaultSite = $this->siteFinder->getSiteByIdentifier($siteIdentifier);
+    }
+
     protected function checkUrl($redirect): ?string
     {
-        $linkDetails = $this->linkService->resolve($redirect['target']);
+        $site = $this->findSiteBySourceHost($redirect['source_host']);
+        // Resolving pages/records needs to boot TSFE. This fails in \TYPO3\CMS\Core\Http\Uri::parseUri() without a
+        // request since cli script path is not a valid url.
+        $GLOBALS['TYPO3_REQUEST'] = new ServerRequest($site->getBase());
 
-        switch ($linkDetails['type']) {
-            case 'page':
-                if (isset($linkDetails['parameters'])) {
-                    parse_str($linkDetails['parameters'], $parameters);
-                    $parameters['_language'] = $parameters['L'];
-                    unset($parameters['L']);
-                }
-                try {
-                    $url = $this->site->getRouter()->generateUri($linkDetails['pageuid'],
-                        $parameters ?? [])->__toString();
-                } catch (\Throwable $e) {
-                    return $e->getMessage();
-                }
-                break;
-            case 'url':
-                $url = $linkDetails['url'];
-                break;
-            case 'file':
-                if (is_null($linkDetails['file'])) {
-                    return 'File record does not exist';
-                }
-                break;
-            case 'unknown':
-                if (strpos($redirect['target'], '/') == 0) {
-                    $scheme = $this->site->getBase()->getScheme();
-                    if ($redirect['force_https']) {
-                        $scheme = 'https';
-                    }
-                    $domain = $redirect['source_host'] === '*' ? $this->site->getBase()->getHost() : $redirect['source_host'];
-                    $url = implode('', [$scheme, '://', $domain, $redirect['target']]);
-                }
-        }
+        $uri = $this->redirectService->getTargetUrl(
+            $redirect,
+            [],
+            $this->frontendUserAuthentication,
+            $site->getBase(),
+            $site
+        );
 
-        if (isset($url)) {
+        if ($uri instanceof UriInterface) {
+            $isFileOrFolder = empty($uri->getHost());
+            if ($isFileOrFolder) {
+                $url = sprintf('%s://%s/%s',
+                    $site->getBase()->getScheme(),
+                    $site->getBase()->getHost(),
+                    $uri->getPath());
+            } else {
+                $url = $uri->__toString();
+            }
+
             try {
                 $requestOptions = [
                     'allow_redirects' => true,
@@ -129,6 +138,26 @@ class HealthcheckService
                 ->set('disabled', 1);
         }
         $query->execute();
+    }
+
+    protected function findSiteBySourceHost($sourceHost): Site
+    {
+        if ($sourceHost === '*') {
+            if ($this->defaultSite instanceof Site) {
+                return $this->defaultSite;
+            }
+
+            $allSites = $this->siteFinder->getAllSites();
+            return current($allSites);
+        }
+
+        foreach ($this->siteFinder->getAllSites() as $site) {
+            if ($site->getBase()->getHost() === $sourceHost) {
+                return $site;
+            }
+        }
+
+        throw new \Exception('No site found', 1605950458);
     }
 
     protected function getQueryBuilder(): QueryBuilder
