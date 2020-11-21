@@ -4,7 +4,7 @@ It provides a healthcheck command for redirects. Redirects with unreachable dest
 
 It also comes with the some fields in redirect records:
 
-* Inactive reason (Reason why it was deactived)
+* Inactive reason (Reason why it was deactivated)
 * Last healthcheck (Date when it was checked)
 
 ## Usage
