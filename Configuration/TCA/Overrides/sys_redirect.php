@@ -7,7 +7,8 @@ if (!defined('TYPO3_MODE')) {
 $GLOBALS['TCA']['sys_redirect']['columns']['check_result'] = [
     'label' => 'LLL:EXT:redirects_healthcheck/Resources/Private/Language/locallang_db.xlf:sys_redirect.check_result',
     'config' => [
-        'type' => 'text'
+        'type' => 'text',
+        'readOnly' => true
     ]
 ];
 
@@ -22,8 +23,7 @@ $GLOBALS['TCA']['sys_redirect']['columns']['last_checked'] = [
     ]
 ];
 
-\TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addFieldsToPalette(
+\TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addToAllTCAtypes(
     'sys_redirect',
-    'visibility',
-    '--linebreak--,check_result,last_checked'
+    '--div--;LLL:EXT:redirects_healthcheck/Resources/Private/Language/locallang_db.xlf:div.health_check, check_result,last_checked'
 );

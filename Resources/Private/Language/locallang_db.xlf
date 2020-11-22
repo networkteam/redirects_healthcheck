@@ -4,6 +4,10 @@
           product-name="redirects_healthcheck">
         <header/>
         <body>
+            <trans-unit id="div.health_check">
+                <source>Health Check</source>
+            </trans-unit>
+
             <trans-unit id="sys_redirect.check_result">
                 <source>Check result</source>
             </trans-unit>
