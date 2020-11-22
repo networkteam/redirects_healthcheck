@@ -4,8 +4,8 @@
           product-name="redirects_healthcheck">
         <header/>
         <body>
-            <trans-unit id="sys_redirect.inactive_reason">
-                <source>Inactive reason</source>
+            <trans-unit id="sys_redirect.check_result">
+                <source>Check result</source>
             </trans-unit>
             <trans-unit id="sys_redirect.last_checked">
                 <source>Last Healthcheck</source>

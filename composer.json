@@ -1,7 +1,7 @@
 {
   "name": "networkteam/redirects-healthcheck",
   "type": "typo3-cms-extension",
-  "description": "Check health of redirects",
+  "description": "It provides a Health check command for redirects",
   "keywords": [
     "TYPO3",
     "Redirects",

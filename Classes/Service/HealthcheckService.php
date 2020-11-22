@@ -2,6 +2,7 @@
 
 namespace Networkteam\RedirectsHealthcheck\Service;
 
+use Networkteam\RedirectsHealthcheck\Domain\Model\Dto\CheckResult;
 use Psr\Http\Message\UriInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use TYPO3\CMS\Core\Database\ConnectionPool;
@@ -17,6 +18,10 @@ use TYPO3\CMS\Redirects\Service\RedirectService;
 class HealthcheckService
 {
     const TABLE = 'sys_redirect';
+
+    const GOOD_CHECK_RESULT = 'OK';
+
+    const BAD_CHECK_RESULT = 'Not OK';
 
     /**
      * @var Site
@@ -42,6 +47,11 @@ class HealthcheckService
      * @var FrontendUserAuthentication
      */
     protected $frontendUserAuthentication;
+
+    /**
+     * @var bool
+     */
+    protected $shouldDisableUnhealthyRedirects = false;
 
     /**
      * @var OutputInterface
@@ -73,8 +83,8 @@ class HealthcheckService
             ->execute();
 
         while ($redirect = $statement->fetch()) {
-            $inactiveReason = $this->checkUrl($redirect);
-            $this->updateRedirect($redirect['uid'], $inactiveReason);
+            $result = $this->checkUrl($redirect);
+            $this->updateRedirect($result);
         }
     }
 
@@ -83,11 +93,17 @@ class HealthcheckService
         $this->defaultSite = $this->siteFinder->getSiteByIdentifier($siteIdentifier);
     }
 
-    public function setOutput(OutputInterface $output) {
+    public function setDisableUnhealthyRedirects(bool $shouldDisableUnhealthyRedirects): void
+    {
+        $this->shouldDisableUnhealthyRedirects = $shouldDisableUnhealthyRedirects;
+    }
+
+    public function setOutput(OutputInterface $output)
+    {
         $this->output = $output;
     }
 
-    protected function checkUrl($redirect): ?string
+    protected function checkUrl($redirect): CheckResult
     {
         $site = $this->findSiteBySourceHost($redirect['source_host']);
         // Resolving pages/records needs to boot TSFE. This fails in \TYPO3\CMS\Core\Http\Uri::parseUri() without a
@@ -126,45 +142,52 @@ class HealthcheckService
                 ];
                 $response = $this->requestFactory->request($url, 'HEAD', $requestOptions);
                 if ($response->getStatusCode() !== 200) {
-                    $inactiveReason = sprintf("Got response: %s %s", $response->getStatusCode(),
+                    $unhealthyReason = sprintf("Got response: %s %s", $response->getStatusCode(),
                         $response->getReasonPhrase());
                 }
             } catch (\Throwable $e) {
-                $inactiveReason = 'Unknown: ' . $e->getMessage();
+                $unhealthyReason = 'Unknown: ' . $e->getMessage();
             }
+        } else {
+            $unhealthyReason = 'Could not resolve target';
         }
+
+        $result = new CheckResult(
+            $redirect,
+            $unhealthyReason ? false : true,
+            $unhealthyReason ? sprintf("%s. %s", self::BAD_CHECK_RESULT, $unhealthyReason) : self::GOOD_CHECK_RESULT
+        );
 
         if ($this->output) {
             if (!$uri) {
-                $this->output->writeln('<error>Could not resolve target</error>');
+                $this->output->writeln(sprintf('<error>%</error>', $result->getResultText()));
             } else {
                 $this->output->write(sprintf('<info>%s</info> ', $url));
-                if ($inactiveReason) {
-                    $this->output->writeln(sprintf('<error>%s</error>', $inactiveReason));
+                if ($result->isHealthy()) {
+                    $this->output->writeln(sprintf('<info>%s</info>', $result->getResultText()));
                 } else {
-                    $this->output->writeln('<info>OK</info>');
+                    $this->output->writeln(sprintf('<error>%s</error>', $result->getResultText()));
                 }
             }
 
         }
 
-        return $inactiveReason ?? null;
+        return $result;
     }
 
-    protected function updateRedirect(int $redirectUid, $inactiveReason = null): void
+    protected function updateRedirect(CheckResult $result): void
     {
         $queryBuilder = $this->getQueryBuilder();
         $query = $queryBuilder
             ->update(self::TABLE)
             ->set('last_checked', $GLOBALS['EXEC_TIME'])
+            ->set('check_result', $result->getResultText())
             ->where(
-                $queryBuilder->expr()->eq('uid', $redirectUid)
+                $queryBuilder->expr()->eq('uid', $result->getRedirect()['uid'])
             );
 
-        if ($inactiveReason) {
-            $query
-                ->set('inactive_reason', $inactiveReason)
-                ->set('disabled', 1);
+        if (!$result->isHealthy() && $this->shouldDisableUnhealthyRedirects) {
+            $query->set('disabled', 1);
         }
         $query->execute();
     }

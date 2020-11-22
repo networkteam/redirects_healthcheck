@@ -1,8 +1,8 @@
 <?php
 
 $EM_CONF[$_EXTKEY] = [
-    'title' => 'Redirects Healthcheck',
-    'description' => 'Healthcheck for redirects',
+    'title' => 'Redirects Health Check',
+    'description' => 'It provides a Health check command for redirects',
     'category' => 'misc',
     'author' => 'Christoph Lehmann',
     'author_email' => 'typo3@networkteam.com',

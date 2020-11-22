@@ -4,8 +4,8 @@ if (!defined('TYPO3_MODE')) {
     die ('Access denied.');
 }
 
-$GLOBALS['TCA']['sys_redirect']['columns']['inactive_reason'] = [
-    'label' => 'LLL:EXT:redirects_healthcheck/Resources/Private/Language/locallang_be.xlf:sys_redirect.inactive_reason',
+$GLOBALS['TCA']['sys_redirect']['columns']['check_result'] = [
+    'label' => 'LLL:EXT:redirects_healthcheck/Resources/Private/Language/locallang_be.xlf:sys_redirect.check_result',
     'config' => [
         'type' => 'text'
     ]
@@ -25,5 +25,5 @@ $GLOBALS['TCA']['sys_redirect']['columns']['last_checked'] = [
 \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addFieldsToPalette(
     'sys_redirect',
     'visibility',
-    '--linebreak--,inactive_reason,last_checked'
+    '--linebreak--,check_result,last_checked'
 );
