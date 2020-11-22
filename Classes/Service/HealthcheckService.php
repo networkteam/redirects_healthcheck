@@ -129,12 +129,12 @@ class HealthcheckService
         $this->shouldDisableBrokenRedirects = $shouldDisableBrokenRedirects;
     }
 
-    public function setOutput(OutputInterface $output)
+    public function setOutput(OutputInterface $output): void
     {
         $this->output = $output;
     }
 
-    public function setMailAddress(string $mailAddress)
+    public function setMailAddress(string $mailAddress): void
     {
         if (!filter_var($mailAddress, FILTER_VALIDATE_EMAIL)) {
             throw new \InvalidArgumentException('Mailaddress is invalid', 1606062072);
@@ -231,7 +231,7 @@ class HealthcheckService
         }
     }
 
-    protected function sendMailReport()
+    protected function sendMailReport(): void
     {
         $csvFile = GeneralUtility::tempnam('broken-redirects', '.csv');
         $fileHandle = fopen($csvFile, 'w');
