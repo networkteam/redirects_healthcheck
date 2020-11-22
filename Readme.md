@@ -29,4 +29,4 @@ Options:
   -v|vv|vvv, --verbose                 Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
 ```
 
-Make sure to use the correct `TYPO3_CONTEXT` in order to use a different site variant. 
+Make sure to use the correct `TYPO3_CONTEXT` in order to use a different site variant. A mail report is only send in case of broken redirects.
