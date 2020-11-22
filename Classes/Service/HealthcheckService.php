@@ -27,8 +27,6 @@ class HealthcheckService
 
     const GOOD_CHECK_RESULT = 'OK';
 
-    const BAD_CHECK_RESULT = 'Not OK';
-
     /**
      * @var Site
      */
@@ -179,20 +177,20 @@ class HealthcheckService
                 ];
                 $response = $this->requestFactory->request($url, 'HEAD', $requestOptions);
                 if ($response->getStatusCode() !== 200) {
-                    $unhealthyReason = sprintf("Got response: %s %s", $response->getStatusCode(),
+                    $badResultText = sprintf("Got response: %s %s", $response->getStatusCode(),
                         $response->getReasonPhrase());
                 }
             } catch (\Throwable $e) {
-                $unhealthyReason = 'Unknown: ' . $e->getMessage();
+                $badResultText = 'Unknown: ' . $e->getMessage();
             }
         } else {
-            $unhealthyReason = 'Can not build target url';
+            $badResultText = 'Can not build target url';
         }
 
         $result = new CheckResult(
             $redirect,
-            $unhealthyReason ? false : true,
-            $unhealthyReason ? sprintf("%s. %s", self::BAD_CHECK_RESULT, $unhealthyReason) : self::GOOD_CHECK_RESULT,
+            $badResultText ? false : true,
+            $badResultText ?: self::GOOD_CHECK_RESULT,
             $url
         );
 
