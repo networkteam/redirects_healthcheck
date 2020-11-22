@@ -19,11 +19,17 @@ class CheckResult
      */
     protected $resultText;
 
-    public function __construct(array $redirect, bool $isHealthy, string $resultText)
+    /**
+     * @var string
+     */
+    protected $targetUrl;
+
+    public function __construct(array $redirect, bool $isHealthy, string $resultText, $targetUrl = '')
     {
         $this->redirect = $redirect;
         $this->isHealthy = $isHealthy;
         $this->resultText = $resultText;
+        $this->targetUrl = $targetUrl;
     }
 
     public function getRedirect(): array
@@ -39,5 +45,10 @@ class CheckResult
     public function getResultText(): string
     {
         return $this->resultText;
+    }
+
+    public function getTargetUrl(): ?string
+    {
+        return $this->targetUrl;
     }
 }

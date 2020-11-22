@@ -84,6 +84,9 @@ class HealthcheckService
 
         while ($redirect = $statement->fetch()) {
             $result = $this->checkUrl($redirect);
+            if ($this->output) {
+                $this->printCheckResult($result);
+            }
             $this->updateRedirect($result);
         }
     }
@@ -118,11 +121,6 @@ class HealthcheckService
             $site
         );
 
-        if ($this->output) {
-            $sourceUrl = $site->getBase()->getScheme() . '://' . $site->getBase()->getHost() . $redirect['source_path'];
-            $this->output->write(sprintf('<info>Checking #%s: %s =></info> ', $redirect['uid'], $sourceUrl));
-        }
-
         if ($uri instanceof UriInterface) {
             $isFileOrFolder = empty($uri->getHost());
             if ($isFileOrFolder) {
@@ -149,28 +147,15 @@ class HealthcheckService
                 $unhealthyReason = 'Unknown: ' . $e->getMessage();
             }
         } else {
-            $unhealthyReason = 'Could not resolve target';
+            $unhealthyReason = 'Can not build target url';
         }
 
         $result = new CheckResult(
             $redirect,
             $unhealthyReason ? false : true,
-            $unhealthyReason ? sprintf("%s. %s", self::BAD_CHECK_RESULT, $unhealthyReason) : self::GOOD_CHECK_RESULT
+            $unhealthyReason ? sprintf("%s. %s", self::BAD_CHECK_RESULT, $unhealthyReason) : self::GOOD_CHECK_RESULT,
+            $url
         );
-
-        if ($this->output) {
-            if (!$uri) {
-                $this->output->writeln(sprintf('<error>%</error>', $result->getResultText()));
-            } else {
-                $this->output->write(sprintf('<info>%s</info> ', $url));
-                if ($result->isHealthy()) {
-                    $this->output->writeln(sprintf('<info>%s</info>', $result->getResultText()));
-                } else {
-                    $this->output->writeln(sprintf('<error>%s</error>', $result->getResultText()));
-                }
-            }
-
-        }
 
         return $result;
     }
@@ -190,6 +175,22 @@ class HealthcheckService
             $query->set('disabled', 1);
         }
         $query->execute();
+    }
+
+    protected function printCheckResult(CheckResult $result): void
+    {
+        $redirect = $result->getRedirect();
+        $this->output->write(sprintf('<info>Redirect #%s: %s%s =></info> ', $redirect['uid'], $redirect['source_host'], $redirect['source_path']));
+        if (!$result->getTargetUrl()) {
+            $this->output->writeln(sprintf('<error>%</error>', $result->getResultText()));
+        } else {
+            $this->output->write(sprintf('<info>%s</info> ', $result->getTargetUrl()));
+            if ($result->isHealthy()) {
+                $this->output->writeln(sprintf('<info>%s</info>', $result->getResultText()));
+            } else {
+                $this->output->writeln(sprintf('<error>%s</error>', $result->getResultText()));
+            }
+        }
     }
 
     protected function findSiteBySourceHost($sourceHost): Site
