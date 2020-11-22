@@ -10,6 +10,13 @@
             <trans-unit id="sys_redirect.last_checked">
                 <source>Last Healthcheck</source>
             </trans-unit>
+
+            <trans-unit id="email.subject">
+                <source>Broken redirects in your TYPO3 system</source>
+            </trans-unit>
+            <trans-unit id="email.body">
+                <source>Hello, there are some broken redirects in your TYPO3 System, see attached list.</source>
+            </trans-unit>
         </body>
     </file>
 </xliff>

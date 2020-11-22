@@ -15,8 +15,22 @@ class CheckCommand extends Command
     protected function configure()
     {
         $this->setDescription('Check health of redirects')
-            ->addOption('siteIdentifier', 's', InputOption::VALUE_OPTIONAL, 'Site is used for wildcard source hosts. It defaults to first site found.')
-            ->addOption('disable', 'd', InputOption::VALUE_NONE, 'Disable unhealthy redirects', null);
+            ->addOption(
+                'siteIdentifier',
+                's',
+                InputOption::VALUE_REQUIRED,
+                'Site is used for wildcard source hosts. It defaults to first site found.')
+            ->addOption(
+                'mailAddress',
+                'm',
+                InputOption::VALUE_REQUIRED,
+                'Recipient address for mail report')
+            ->addOption(
+                'disable',
+                'd',
+                InputOption::VALUE_NONE,
+                'Disable broken redirects',
+                null);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -25,8 +39,10 @@ class CheckCommand extends Command
         if ($input->getOption('siteIdentifier')) {
             $healthcheckService->setDefaultSite($input->getOption('siteIdentifier'));
         }
-        $healthcheckService->setDisableUnhealthyRedirects($input->getOption('disable'));
-
+        $healthcheckService->setDisableBrokenRedirects($input->getOption('disable'));
+        if ($input->getOption('mailAddress')) {
+            $healthcheckService->setMailAddress($input->getOption('mailAddress'));
+        }
         if ($output->isVerbose()) {
             $healthcheckService->setOutput($output);
         }

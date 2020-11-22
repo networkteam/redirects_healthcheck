@@ -5,14 +5,14 @@ if (!defined('TYPO3_MODE')) {
 }
 
 $GLOBALS['TCA']['sys_redirect']['columns']['check_result'] = [
-    'label' => 'LLL:EXT:redirects_healthcheck/Resources/Private/Language/locallang_be.xlf:sys_redirect.check_result',
+    'label' => 'LLL:EXT:redirects_healthcheck/Resources/Private/Language/locallang_db.xlf:sys_redirect.check_result',
     'config' => [
         'type' => 'text'
     ]
 ];
 
 $GLOBALS['TCA']['sys_redirect']['columns']['last_checked'] = [
-    'label' => 'LLL:EXT:redirects_healthcheck/Resources/Private/Language/locallang_be.xlf:sys_redirect.last_checked',
+    'label' => 'LLL:EXT:redirects_healthcheck/Resources/Private/Language/locallang_db.xlf:sys_redirect.last_checked',
     'config' => [
         'type' => 'input',
         'renderType' => 'inputDateTime',

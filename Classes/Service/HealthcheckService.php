@@ -5,13 +5,20 @@ namespace Networkteam\RedirectsHealthcheck\Service;
 use Networkteam\RedirectsHealthcheck\Domain\Model\Dto\CheckResult;
 use Psr\Http\Message\UriInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Mime\Address;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Http\RequestFactory;
 use TYPO3\CMS\Core\Http\ServerRequest;
+use TYPO3\CMS\Core\Localization\LanguageService;
+use TYPO3\CMS\Core\Mail\FluidEmail;
+use TYPO3\CMS\Core\Mail\Mailer;
+use TYPO3\CMS\Core\Mail\MailMessage;
 use TYPO3\CMS\Core\Site\Entity\Site;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\VersionNumberUtility;
+use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
 use TYPO3\CMS\Redirects\Service\RedirectService;
 
@@ -51,12 +58,27 @@ class HealthcheckService
     /**
      * @var bool
      */
-    protected $shouldDisableUnhealthyRedirects = false;
+    protected $shouldDisableBrokenRedirects = false;
 
     /**
      * @var OutputInterface
      */
     protected $output;
+
+    /**
+     * @var string
+     */
+    protected $mailAddress;
+
+    /**
+     * @var bool
+     */
+    protected $shouldSendMailReport = false;
+
+    /**
+     * @var array<CheckResult
+     */
+    protected $badCheckResults;
 
     public function __construct(
         SiteFinder $siteFinder,
@@ -87,7 +109,16 @@ class HealthcheckService
             if ($this->output) {
                 $this->printCheckResult($result);
             }
+
+            if (!$result->isHealthy() && $this->shouldSendMailReport) {
+                $this->badCheckResults[] = $result;
+            }
+
             $this->updateRedirect($result);
+        }
+
+        if ($this->shouldSendMailReport && $this->badCheckResults) {
+            $this->sendMailReport();
         }
     }
 
@@ -96,14 +127,23 @@ class HealthcheckService
         $this->defaultSite = $this->siteFinder->getSiteByIdentifier($siteIdentifier);
     }
 
-    public function setDisableUnhealthyRedirects(bool $shouldDisableUnhealthyRedirects): void
+    public function setDisableBrokenRedirects(bool $shouldDisableBrokenRedirects): void
     {
-        $this->shouldDisableUnhealthyRedirects = $shouldDisableUnhealthyRedirects;
+        $this->shouldDisableBrokenRedirects = $shouldDisableBrokenRedirects;
     }
 
     public function setOutput(OutputInterface $output)
     {
         $this->output = $output;
+    }
+
+    public function setMailAddress(string $mailAddress)
+    {
+        if (!filter_var($mailAddress, FILTER_VALIDATE_EMAIL)) {
+            throw new \InvalidArgumentException('Mailaddress is invalid', 1606062072);
+        }
+        $this->mailAddress = $mailAddress;
+        $this->shouldSendMailReport = true;
     }
 
     protected function checkUrl($redirect): CheckResult
@@ -171,7 +211,7 @@ class HealthcheckService
                 $queryBuilder->expr()->eq('uid', $result->getRedirect()['uid'])
             );
 
-        if (!$result->isHealthy() && $this->shouldDisableUnhealthyRedirects) {
+        if (!$result->isHealthy() && $this->shouldDisableBrokenRedirects) {
             $query->set('disabled', 1);
         }
         $query->execute();
@@ -180,7 +220,8 @@ class HealthcheckService
     protected function printCheckResult(CheckResult $result): void
     {
         $redirect = $result->getRedirect();
-        $this->output->write(sprintf('<info>Redirect #%s: %s%s =></info> ', $redirect['uid'], $redirect['source_host'], $redirect['source_path']));
+        $this->output->write(sprintf('<info>Redirect #%s: %s%s =></info> ', $redirect['uid'], $redirect['source_host'],
+            $redirect['source_path']));
         if (!$result->getTargetUrl()) {
             $this->output->writeln(sprintf('<error>%</error>', $result->getResultText()));
         } else {
@@ -190,6 +231,73 @@ class HealthcheckService
             } else {
                 $this->output->writeln(sprintf('<error>%s</error>', $result->getResultText()));
             }
+        }
+    }
+
+    protected function sendMailReport()
+    {
+        $csvFile = GeneralUtility::tempnam('broken-redirects', '.csv');
+        $fileHandle = fopen($csvFile, 'w');
+        fputs($fileHandle, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF)));
+
+        $languageService = $this->getLanguageService();
+        $languageFile = 'LLL:EXT:redirects_healthcheck/Resources/Private/Language/locallang_db.xlf:';
+        $redirectsLanguageFile = 'LLL:EXT:redirects/Resources/Private/Language/locallang_db.xlf:';
+        fputcsv($fileHandle, [
+            $languageService->sL($redirectsLanguageFile . 'sys_redirect'),
+            $languageService->sL($redirectsLanguageFile . 'sys_redirect.source_host'),
+            $languageService->sL($redirectsLanguageFile . 'sys_redirect.source_path'),
+            $languageService->sL($redirectsLanguageFile . 'sys_redirect.target'),
+            $languageService->sL($languageFile . 'sys_redirect.check_result')
+        ]);
+
+        /** @var CheckResult $checkResult */
+        foreach ($this->badCheckResults as $checkResult) {
+            $redirect = $checkResult->getRedirect();
+            fputcsv(
+                $fileHandle,
+                [
+                    $redirect['uid'],
+                    $redirect['source_host'],
+                    $redirect['source_path'],
+                    $checkResult->getTargetUrl(),
+                    $checkResult->getResultText()
+                ]
+            );
+        }
+        fclose($fileHandle);
+
+        try {
+            $site = $this->defaultSite ?: $this->findSiteBySourceHost('*');
+            $siteUrl = sprintf('%s://%s/', $site->getBase()->getScheme(), $site->getBase()->getHost());
+            $senderEmail = $GLOBALS['TYPO3_CONF_VARS']['MAIL']['defaultMailFromAddress'];
+            $senderName = $GLOBALS['TYPO3_CONF_VARS']['MAIL']['defaultMailFromName'];
+            $subject = $languageService->sL($languageFile . 'email.subject');
+            $body = $languageService->sL($languageFile . 'email.body');
+
+            if (VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getNumericTypo3Version()) > 10000000) {
+                $email = GeneralUtility::makeInstance(FluidEmail::class);
+                $email
+                    ->to($this->mailAddress)
+                    ->from(new Address($senderEmail, $senderName))
+                    ->subject($subject)
+                    ->assign('content', $body)
+                    ->assign('normalizedParams', ['siteUrl' => $siteUrl])
+                    ->attachFromPath($csvFile, 'broken-redirects.csv');
+                GeneralUtility::makeInstance(Mailer::class)->send($email);
+            } else {
+                $email = GeneralUtility::makeInstance(MailMessage::class);
+                $email
+                    ->setSubject($subject)
+                    ->setFrom([$senderEmail => $senderName])
+                    ->setTo($this->mailAddress)
+                    ->setBody($body)
+                    ->attach(\Swift_Attachment::fromPath($csvFile))
+                    ->send();
+            }
+        } catch (\Throwable $e) {
+            unlink($csvFile);
+            throw $e;
         }
     }
 
@@ -216,5 +324,10 @@ class HealthcheckService
     protected function getQueryBuilder(): QueryBuilder
     {
         return GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable(self::TABLE);
+    }
+
+    protected function getLanguageService(): LanguageService
+    {
+        return $GLOBALS['LANG'];
     }
 }
