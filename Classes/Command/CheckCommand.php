@@ -16,12 +16,7 @@ class CheckCommand extends Command
     {
         $this->setDescription('Check health of redirects')
             ->addOption(
-                'siteIdentifier',
-                's',
-                InputOption::VALUE_REQUIRED,
-                'Site is used for wildcard source hosts. It defaults to first site found.')
-            ->addOption(
-                'mailAddress',
+                'mailaddress',
                 'm',
                 InputOption::VALUE_REQUIRED,
                 'Recipient address for mail report')
@@ -36,12 +31,9 @@ class CheckCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $healthcheckService = GeneralUtility::makeInstance(ObjectManager::class)->get(HealthcheckService::class);
-        if ($input->getOption('siteIdentifier')) {
-            $healthcheckService->setDefaultSite($input->getOption('siteIdentifier'));
-        }
         $healthcheckService->setDisableBrokenRedirects($input->getOption('disable'));
-        if ($input->getOption('mailAddress')) {
-            $healthcheckService->setMailAddress($input->getOption('mailAddress'));
+        if ($input->getOption('mailaddress')) {
+            $healthcheckService->setMailAddress($input->getOption('mailaddress'));
         }
         if ($output->isVerbose()) {
             $healthcheckService->setOutput($output);

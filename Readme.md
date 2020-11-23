@@ -16,8 +16,7 @@ Usage:
   redirects:checkhealth [options]
 
 Options:
-  -s, --siteIdentifier=SITEIDENTIFIER  Site is used for wildcard source hosts. It defaults to first site found.
-  -m, --mailAddress=MAILADDRESS        Recipient address for mail report
+  -m, --mailaddress=MAILADDRESS        Recipient address for mail report
   -d, --disable                        Disable broken redirects
 
   -h, --help                           Display this help message

@@ -28,11 +28,6 @@ class HealthcheckService
     const GOOD_CHECK_RESULT = 'OK';
 
     /**
-     * @var Site
-     */
-    protected $defaultSite;
-
-    /**
      * @var SiteFinder
      */
     protected $siteFinder;
@@ -117,11 +112,6 @@ class HealthcheckService
         if ($this->shouldSendMailReport && $this->badCheckResults) {
             $this->sendMailReport();
         }
-    }
-
-    public function setDefaultSite(string $siteIdentifier): void
-    {
-        $this->defaultSite = $this->siteFinder->getSiteByIdentifier($siteIdentifier);
     }
 
     public function setDisableBrokenRedirects(bool $shouldDisableBrokenRedirects): void
@@ -265,8 +255,10 @@ class HealthcheckService
         fclose($fileHandle);
 
         try {
-            $site = $this->defaultSite ?: $this->findSiteBySourceHost('*');
+            $allSites = $this->siteFinder->getAllSites();
+            $site = current($allSites);
             $siteUrl = sprintf('%s://%s/', $site->getBase()->getScheme(), $site->getBase()->getHost());
+
             $senderEmail = $GLOBALS['TYPO3_CONF_VARS']['MAIL']['defaultMailFromAddress'];
             $senderName = $GLOBALS['TYPO3_CONF_VARS']['MAIL']['defaultMailFromName'];
             $subject = $languageService->sL($languageFile . 'email.subject');
@@ -300,22 +292,14 @@ class HealthcheckService
 
     protected function findSiteBySourceHost($sourceHost): Site
     {
-        if ($sourceHost === '*') {
-            if ($this->defaultSite instanceof Site) {
-                return $this->defaultSite;
-            }
-
-            $allSites = $this->siteFinder->getAllSites();
-            return current($allSites);
-        }
-
         foreach ($this->siteFinder->getAllSites() as $site) {
             if ($site->getBase()->getHost() === $sourceHost) {
                 return $site;
             }
         }
 
-        throw new \Exception('No site found', 1605950458);
+        $allSites = $this->siteFinder->getAllSites();
+        return current($allSites);
     }
 
     protected function getQueryBuilder(): QueryBuilder
