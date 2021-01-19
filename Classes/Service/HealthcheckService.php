@@ -135,30 +135,9 @@ class HealthcheckService
 
     protected function checkUrl($redirect): CheckResult
     {
-        $site = $this->findSiteBySourceHost($redirect['source_host']);
-        // Resolving pages/records needs to boot TSFE. This fails in \TYPO3\CMS\Core\Http\Uri::parseUri() without a
-        // request since cli script path is not a valid url.
-        $GLOBALS['TYPO3_REQUEST'] = new ServerRequest($site->getBase());
+        $url = $this->resolvUrl($redirect);
 
-        $uri = $this->redirectService->getTargetUrl(
-            $redirect,
-            [],
-            $this->frontendUserAuthentication,
-            $site->getBase(),
-            $site
-        );
-
-        if ($uri instanceof UriInterface) {
-            $isFileOrFolder = empty($uri->getHost());
-            if ($isFileOrFolder) {
-                $url = sprintf('%s://%s/%s',
-                    $site->getBase()->getScheme(),
-                    $site->getBase()->getHost(),
-                    $uri->getPath());
-            } else {
-                $url = $uri->__toString();
-            }
-
+        if (isset($url)) {
             try {
                 $requestOptions = [
                     'allow_redirects' => true,
@@ -185,6 +164,36 @@ class HealthcheckService
         );
 
         return $result;
+    }
+
+    protected function resolvUrl(array $redirect): ?string
+    {
+        $site = $this->findSiteBySourceHost($redirect['source_host']);
+
+        if (strpos($redirect['target'], '/') === 0) {
+            $url = $site->getBase()->__toString() . ltrim($redirect['target'], '/');
+        } else {
+            // Resolving pages/records needs to boot TSFE. This fails in \TYPO3\CMS\Core\Http\Uri::parseUri() without a
+            // request since cli script path is not a valid url.
+            $GLOBALS['TYPO3_REQUEST'] = new ServerRequest($site->getBase());
+
+            $uri = $this->redirectService->getTargetUrl(
+                $redirect,
+                [],
+                $this->frontendUserAuthentication,
+                $site->getBase(),
+                $site
+            );
+            if ($uri instanceof  UriInterface) {
+                if (empty($uri->getHost())) {
+                    $url = $site->getBase()->__toString() . ltrim($uri->getPath(), '/');
+                } else {
+                    $url = $uri->__toString();
+                }
+            }
+        }
+
+        return $url ?? null;
     }
 
     protected function updateRedirect(CheckResult $result): void
