@@ -129,6 +129,11 @@ class HealthcheckService
         if (!filter_var($mailAddress, FILTER_VALIDATE_EMAIL)) {
             throw new \InvalidArgumentException('Mailaddress is invalid', 1606062072);
         }
+
+        if (empty($GLOBALS['TYPO3_CONF_VARS']['MAIL']['defaultMailFromAddress'])) {
+            throw new \Exception('Sender address $GLOBALS[\'TYPO3_CONF_VARS\'][\'MAIL\'][\'defaultMailFromAddress\'] not set.', 1611173635);
+        }
+
         $this->mailAddress = $mailAddress;
         $this->shouldSendMailReport = true;
     }
