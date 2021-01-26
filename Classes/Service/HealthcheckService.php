@@ -224,7 +224,7 @@ class HealthcheckService
         $this->output->write(sprintf('<info>Redirect #%s: %s%s =></info> ', $redirect['uid'], $redirect['source_host'],
             $redirect['source_path']));
         if (!$result->getTargetUrl()) {
-            $this->output->writeln(sprintf('<error>%</error>', $result->getResultText()));
+            $this->output->writeln(sprintf('<error>%s</error>', $result->getResultText()));
         } else {
             $this->output->write(sprintf('<info>%s</info> ', $result->getTargetUrl()));
             if ($result->isHealthy()) {
