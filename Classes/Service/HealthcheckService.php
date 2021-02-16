@@ -278,26 +278,15 @@ class HealthcheckService
             $subject = $languageService->sL($languageFile . 'email.subject');
             $body = $languageService->sL($languageFile . 'email.body');
 
-            if (VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getNumericTypo3Version()) > 10000000) {
-                $email = GeneralUtility::makeInstance(FluidEmail::class);
-                $email
-                    ->to($this->mailAddress)
-                    ->from(new Address($senderEmail, $senderName))
-                    ->subject($subject)
-                    ->assign('content', $body)
-                    ->assign('normalizedParams', ['siteUrl' => $siteUrl])
-                    ->attachFromPath($csvFile, 'broken-redirects.csv');
-                GeneralUtility::makeInstance(Mailer::class)->send($email);
-            } else {
-                $email = GeneralUtility::makeInstance(MailMessage::class);
-                $email
-                    ->setSubject($subject)
-                    ->setFrom([$senderEmail => $senderName])
-                    ->setTo($this->mailAddress)
-                    ->setBody($body)
-                    ->attach(\Swift_Attachment::fromPath($csvFile))
-                    ->send();
-            }
+            $email = GeneralUtility::makeInstance(FluidEmail::class);
+            $email
+                ->to($this->mailAddress)
+                ->from(new Address($senderEmail, $senderName))
+                ->subject($subject)
+                ->assign('content', $body)
+                ->assign('normalizedParams', ['siteUrl' => $siteUrl])
+                ->attachFromPath($csvFile, 'broken-redirects.csv');
+            GeneralUtility::makeInstance(Mailer::class)->send($email);
         } catch (\Throwable $e) {
             unlink($csvFile);
             throw $e;
