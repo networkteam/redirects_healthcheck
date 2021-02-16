@@ -159,6 +159,7 @@ class HealthcheckService
             }
         } else {
             $badResultText = 'Can not build target url';
+            $url = $redirect['target'];
         }
 
         $result = new CheckResult(
