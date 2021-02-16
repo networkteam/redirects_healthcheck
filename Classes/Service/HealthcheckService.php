@@ -175,7 +175,7 @@ class HealthcheckService
     {
         $site = $this->findSiteBySourceHost($redirect['source_host']);
 
-        if (strpos($redirect['target'], '/') === 0) {
+        if (strpos($redirect['target'], '://') === false) {
             $url = $site->getBase()->__toString() . ltrim($redirect['target'], '/');
         } else {
             // Resolving pages/records needs to boot TSFE. This fails in \TYPO3\CMS\Core\Http\Uri::parseUri() without a
