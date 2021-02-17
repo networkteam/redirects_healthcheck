@@ -8,7 +8,8 @@ $GLOBALS['TCA']['sys_redirect']['columns']['check_result'] = [
     'label' => 'LLL:EXT:redirects_healthcheck/Resources/Private/Language/locallang_db.xlf:sys_redirect.check_result',
     'config' => [
         'type' => 'text',
-        'readOnly' => true
+        'readOnly' => true,
+        'default' => '',
     ]
 ];
 
@@ -19,7 +20,7 @@ $GLOBALS['TCA']['sys_redirect']['columns']['last_checked'] = [
         'renderType' => 'inputDateTime',
         'size' => 10,
         'eval' => 'datetime',
-        'readOnly' => true
+        'readOnly' => true,
     ]
 ];
 
