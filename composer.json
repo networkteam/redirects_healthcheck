@@ -19,5 +19,10 @@
     "psr-4": {
       "Networkteam\\RedirectsHealthcheck\\": "Classes/"
     }
+  },
+  "extra": {
+    "typo3/cms": {
+      "extension-key": "redirects_healthcheck"
+    }
   }
 }
